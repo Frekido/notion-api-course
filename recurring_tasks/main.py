@@ -1,101 +1,96 @@
 import requests
+import json
 import os
 from dotenv import load_dotenv
-import json
-import time
-# Load the .env file
+# Load the .env file //// nog uit zoeken Query with filter https://www.notion.so/Notion-API-Course-979b30c25adc4c7c8fa5391614162403#39f5b2f9d9fb4c0786953282562c46d8
 load_dotenv()
 
 # TODO: Make sure that you have a NOTION_SECRET environment variable set
 NOTION_TOKEN = os.getenv('NOTION_SECRET', '')
 
 
-def post_task(database_id: str):
-    """
-        Gets a fun fact and posts it to your database
-    Args:
-        database_id (str): id of your database
-    """
-    # Use our own function to get the data for our task
-    fun_fact = get_fun_fact()
+def query_filter(notion_id: str):
 
-    if fun_fact is None:
-        print('Could not get fun fact')
-        return
-
+    # You can have a single filter
+    # More information about filter: https://developers.notion.com/reference/post-database-query#post-database-query-filter
     payload = {
-        # This specifies in which database our row gets added
-        'parent': {'database_id': database_id},
-        'properties': {  # These are our columns
-            # Read the documentation to see what values you can use, I can't explain it better:)
-            # https://developers.notion.com/reference/page#property-value-object
-            'Fact': {
-                'title': [
-                    {
-                        'text': {'content': fun_fact['fact']}
-                    }
-                ]
-            },
-            'Category': {
-                'select': {'name': fun_fact['cat']}
-            },
-            'Hits': {
-                # We have to convert the string to an int because the fun-fact API returns strings for some reason
-                'number': int(fun_fact['hits'])
-            },
-            'ID': {
-                # We have to convert the string to an int because the fun-fact API returns strings for some reason
-                'number': int(fun_fact['id'])
+        'filter':
+            {
+                'property': 'Fact',  # Column name
+                'text': {
+                    'contains': 'Wikipedia'  # filter and value to filter for
+                }
             }
+    }
+
+    # Or you can have multiple filter:
+    """
+    payload = {
+        'filter':
+        {
+            'and': [
+                {
+                    'property': 'Seen',
+                    'checkbox': {
+                        'equals': False
+                    }
+                },
+                {
+                    'property': 'Yearly visitor count',
+                    'number': {
+                        'greater_than': 1000000
+                    }
+                }
+            ]
         }
     }
-    # For more information about this endpoint, visit the documentation: https://developers.notion.com/reference/post-page
-    response = requests.post('https://api.notion.com/v1/pages/', json=payload, headers={
+    """
+    # The actual API request
+    response = requests.post('https://api.notion.com/v1/databases/{}/query'.format(notion_id), json=payload, headers={
         'Authorization': 'Bearer '+NOTION_TOKEN, 'Notion-Version': '2021-08-16'})
 
-    # Request failed, don't try to parse and just return
+    # If the request was not successful, we print the error and return
     if not response.ok:
-        print(response.status_code, response.content)
+        print('Error:', response.status_code)
+        print('Error:', response.content)
         return
 
+    # Parse the response as JSON
     data = response.json()
-    print(data['id'])
-    print('New task available here: {}'.format(data['url']))
 
-    # Uncomment the following line to see the complete response
-    # print(json.dumps(data, indent=4))
+    # If you want to see the complete response, uncomment the following line
+    print(json.dumps(data, indent=4))
 
-
-def get_fun_fact():
-    """Gets a fun-fact from an external API. 
-    This is just a placeholder with a fun-fact API to get some external data.
-    Check out https://github.com/public-apis/public-apis for more free & public APIs!
-    """
-    # Get the fun fact:)
-    r = requests.get('https://asli-fun-fact-api.herokuapp.com/')
-    # Request failed, don't try to parse and just return None
-    if not r.ok:
-        return None
-
-    # Parse JSON
-    json_data = r.json()
-
-    # Uncomment the following line to see the complete response
-    # print(json.dumps(json_data, indent=4))
-    return json_data['data']
+    return data['results']
 
 
-if __name__ == '__main__':
-    # Id of your Database. Looks like this: f1f5071d-8d2a-47aa-9ddc-02b8aad3f6bc
-    # Use list_databases.py to get the id of your database
-    # Your database should look like this: https://safelyy.notion.site/f1f5071d8d2a47aa9ddc02b8aad3f6bc
-    # You can duplicate it, create one manually or try to create one with the API. See create_database.py for an example!
+if __name__ == "__main__":
+
+    # ID of the notion row/page
+    # You can get the ID by listing all databases first (list_databases.py)
+    # You can not copy the id from the app!
+    # I suggest using the same database as in the recurring_tasks project
     database_id = 'TODO'
 
-    post_task(database_id)
+    # Call function to query the database
+    rows = query_filter(database_id)
 
-    # In a perfect scenario you would use something like cron or a scheduler to run this script in your desired interval
-    # See the Render deployment section for more information
-    # while True:
-    #    post_task(database_id)
-    #    time.sleep(60*60*24)
+    # Something failed:(
+    if rows is None:
+        exit(1)
+
+    for row in rows:
+        # Find the title row
+        title = 'Untitled'
+        # Iterate over all columns and find the title column
+        for property_key in row['properties']:
+            property = row['properties'][property_key]
+            if property['type'] == 'title':  # If we find the title column
+                # Join all title parts together and ignore the formatting
+                title = ''.join([t['plain_text'] for t in property['title']])
+
+        # Print id and title
+        print(row['id'], title)
+
+        # If you want to see the complete row, uncomment the following line
+        # print(json.dumps(row, indent=4))
