@@ -17,9 +17,9 @@ def filter_databases():
 
     # This is the filter for the query, you can also use value: page if you want to get all pages instead!
     payload = {
-        # This will filter for the database title, you can remove it if you don't want to filter
+        # This will filter for the database title, you can remove it if you don't want to filter //heb dbase ingevuld
         # All databases will get returned that start with 'title
-        'query': 'title',
+        'query': 'recurring',
         'filter': {
             'value': 'database',
             'property': 'object'

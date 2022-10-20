@@ -1,7 +1,8 @@
 import requests
-import json
 import os
 from dotenv import load_dotenv
+import json
+import time
 # Load the .env file
 load_dotenv()
 
@@ -9,54 +10,92 @@ load_dotenv()
 NOTION_TOKEN = os.getenv('NOTION_SECRET', '')
 
 
-def query(notion_id: str):
+def post_task(database_id: str):
+    """
+        Gets a fun fact and posts it to your database
+    Args:
+        database_id (str): id of your database
+    """
+    # Use our own function to get the data for our task
+    fun_fact = get_fun_fact()
 
-    # This is without pagination! To figure out how to do pagination, take a look at the list_databases example
-    # The actual API request
-    response = requests.post('https://api.notion.com/v1/databases/{}/query'.format(notion_id), headers={
-        'Authorization': 'Bearer '+NOTION_TOKEN, 'Notion-Version': '2021-08-16'})
-
-    # If the request was not successful, we print the error and return
-    if not response.ok:
-        print('Error:', response.status_code)
-        print('Error:', response.content)
+    if fun_fact is None:
+        print('Could not get fun fact')
         return
 
-    # Parse the response as JSON
+    payload = {
+        # This specifies in which database our row gets added
+        'parent': {'database_id': "3e93aeec177d4a25a6a360ae43f1377f"},
+        'properties': {  # These are our columns
+            # Read the documentation to see what values you can use, I can't explain it better:)
+            # https://developers.notion.com/reference/page#property-value-object
+            'Fact': {
+                'title': [
+                    {
+                        'text': {'content': fun_fact['fact']}
+                    }
+                ]
+            },
+            'Category': {
+                'select': {'name': fun_fact['cat']}
+            },
+            'Hits': {
+                # We have to convert the string to an int because the fun-fact API returns strings for some reason
+                'number': int(fun_fact['hits'])
+            },
+            'ID': {
+                # We have to convert the string to an int because the fun-fact API returns strings for some reason
+                'number': int(fun_fact['id'])
+            }
+        }
+    }
+    # For more information about this endpoint, visit the documentation: https://developers.notion.com/reference/post-page
+    response = requests.post('https://api.notion.com/v1/pages/', json=payload, headers={
+        'Authorization': 'Bearer '+NOTION_TOKEN, 'Notion-Version': '2021-08-16'})
+
+    # Request failed, don't try to parse and just return
+    if not response.ok:
+        print(response.status_code, response.content)
+        return
+
     data = response.json()
+    print(data['id'])
+    print('New task available here: {}'.format(data['url']))
 
-    # If you want to see the complete response, uncomment the following line
-    print(json.dumps(data, indent=4))
-
-    return data['results']
+    # Uncomment the following line to see the complete response
+    # print(json.dumps(data, indent=4))
 
 
-if __name__ == "__main__":
+def get_fun_fact():
+    """Gets a fun-fact from an external API.
+    This is just a placeholder with a fun-fact API to get some external data.
+    Check out https://github.com/public-apis/public-apis for more free & public APIs!
+    """
+    # Get the fun fact:)
+    r = requests.get('https://asli-fun-fact-api.herokuapp.com/')
+    # Request failed, don't try to parse and just return None
+    if not r.ok:
+        return None
 
-    # ID of the notion row/page
-    # You can get the ID by listing all databases first (list_databases.py)
-    # You can not copy the id from the app!
+    # Parse JSON
+    json_data = r.json()
+
+    # Uncomment the following line to see the complete response
+    # print(json.dumps(json_data, indent=4))
+    return json_data['data']
+
+
+if __name__ == '__main__':
+    # Id of your Database. Looks like this: f1f5071d-8d2a-47aa-9ddc-02b8aad3f6bc
+    # Use list_databases.py to get the id of your database
+    # Your database should look like this: https://safelyy.notion.site/f1f5071d8d2a47aa9ddc02b8aad3f6bc
+    # You can duplicate it, create one manually or try to create one with the API. See create_database.py for an example!
     database_id = 'TODO'
 
-    # Call function to query the database
-    rows = query(database_id)
+    post_task(database_id)
 
-    # Something failed:(
-    if rows is None:
-        exit(1)
-
-    for row in rows:
-        # Find the title row
-        title = 'Untitled'
-        # Iterate over all columns and find the title column
-        for property_key in row['properties']:
-            property = row['properties'][property_key]
-            if property['type'] == 'title':  # If we find the title column
-                # Join all title parts together and ignore the formatting
-                title = ''.join([t['plain_text'] for t in property['title']])
-
-        # Print id and title
-        print(row['id'], title)
-
-        # If you want to see the complete row, uncomment the following line
-        # print(json.dumps(row, indent=4))
+    # In a perfect scenario you would use something like cron or a scheduler to run this script in your desired interval
+    # See the Render deployment section for more information
+    # while True:
+    #    post_task(database_id)
+    #    time.sleep(60*60*24)

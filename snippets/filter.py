@@ -16,13 +16,13 @@ def query_filter(notion_id: str):
     payload = {
         'filter':
             {
-                'property': 'Fact',  # Column name
+                'property': 'Name',  # Column name
                 'text': {
-                    'contains': 'Wikipedia'  # filter and value to filter for
+                    'contains': 'a'  # filter and value to filter for
                 }
             }
     }
-
+# {'property': 'Name', 'text': {'contains': 'a'}}
     # Or you can have multiple filter:
     """
     payload = {
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     # You can get the ID by listing all databases first (list_databases.py)
     # You can not copy the id from the app!
     # I suggest using the same database as in the recurring_tasks project
-    database_id = 'TODO'
+    database_id = "23d29aa90e024458b947282d7d16ec27" #Dbase
 
     # Call function to query the database
     rows = query_filter(database_id)
@@ -93,4 +93,4 @@ if __name__ == "__main__":
         print(row['id'], title)
 
         # If you want to see the complete row, uncomment the following line
-        # print(json.dumps(row, indent=4))
+        print(json.dumps(row, indent=4))

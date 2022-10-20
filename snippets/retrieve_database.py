@@ -32,7 +32,7 @@ def retrieve_database(notion_id: str):
 if __name__ == "__main__":
 
     # Your database notion id, example format: 0428ef5b-c030-4b4f-b3c5-4bf0a0e370b3
-    database_id = 'TODO'
+    database_id = "3e93aeec177d4a25a6a360ae43f1377f"
 
     # Call function to get database
     database = retrieve_database(database_id)

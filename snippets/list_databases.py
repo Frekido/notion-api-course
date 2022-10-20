@@ -3,6 +3,7 @@ import json
 import os
 from dotenv import load_dotenv
 # Load the .env file
+# Deze file geeft de id's van alle databases in mijn Notion
 load_dotenv()
 
 # TODO: Make sure that you have a NOTION_SECRET environment variable set
